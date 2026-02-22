@@ -24,17 +24,19 @@ ollama serve &
 ollama pull qwen3-coder:30b-a3b
 
 # 2. Customise your project code location in .env using MY_WORKSPACE environment variable.
-# 3a. By default ./workspace
+# 2a. By default ./workspace, init your project there
 cd workspace && git init && git add . && git commit -m "pre-claude checkpoint"
-# 3b. Git checkpoint first!
+# 2b. Set the folder of your existing project .env
+MY_WORKSPACE=''
 
-# 4. Build and start
+
+# 3. Build and start
 docker compose up --build -d
 
-# 5. Enter the sandbox
+# 4. Enter the sandbox
 docker compose exec claude-code bash
 
-# 6. Inside the container — start coding
+# 5. Inside the container — start coding
 claude --model qwen3-coder:30b-a3b --dangerously-skip-permissions
 ```
 
