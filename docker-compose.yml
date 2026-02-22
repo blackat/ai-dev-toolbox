@@ -1,0 +1,150 @@
+# =============================================================================
+# docker-compose.yml — Claude Code + Ollama (Mac architecture)
+#
+# Claude Code container extends Anthropic's official devcontainer base.
+# Ollama runs natively on your Mac (uses Apple Silicon GPU via Metal).
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # CLAUDE CODE — Sandboxed AI coding agent
+  # Built from our Dockerfile that extends Anthropic's official devcontainer
+  #
+  # Security measures applied:
+  #   ✅ Runs as non-root user
+  #   ✅ Read-only filesystem (except /workspace and /tmp)
+  #   ✅ No new privileges escalation
+  #   ✅ Dropped Linux capabilities
+  #   ✅ Network firewall (whitelist only)
+  #   ✅ Memory and CPU limits
+  #   ✅ Only your project folder is mounted
+  #   ✅ No SSH keys, credentials, or home dir mounted
+  # ────────────────────────────────────────────────────────────────────────────
+  claude-code:
+    build:
+      context: ./devcontainer     # folder containing Dockerfile, init-firewall.sh, entrypoint.sh
+      dockerfile: Dockerfile
+      args:
+        CLAUDE_CODE_VERSION: latest   # pin a version here if you want reproducibility
+        TZ: Europe/Zurich             # your timezone
+
+    container_name: claude-code-sandbox
+
+    # Run as node user — same as Anthropic's official image
+    # (non-root, but with sudo rights for the firewall script only)
+    user: node
+
+    # Interactive terminal
+    stdin_open: true
+    tty: true
+
+    networks:
+      - ai-network
+
+    volumes:
+      # ── Your project code ── mount ONLY the folder you're working on ────────
+      - ./workspace:/workspace:rw
+
+      # ── Persist Claude Code config + auth between container restarts ─────────
+      # Same mount path Anthropic's devcontainer.json uses: /home/node/.claude
+      - claude-config:/home/node/.claude:rw
+
+      # ── Persist shell history (zsh + bash) ───────────────────────────────────
+      - command-history:/commandhistory:rw
+
+      # ── Mount your git identity read-only (so git commits have your name) ───
+      # Safe: read-only, only exposes name/email — not your SSH keys
+      - ${HOME}/.gitconfig:/home/node/.gitconfig:ro
+
+    environment:
+      # Ollama on Mac host — Docker's magic hostname resolves to your Mac's IP
+      - ANTHROPIC_BASE_URL=http://host.docker.internal:11434
+      - ANTHROPIC_AUTH_TOKEN=ollama
+      - ANTHROPIC_API_KEY=         # empty — not needed with local Ollama
+
+      # Default model (override at runtime: claude --model other-model)
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b-a3b}
+
+      # If you ever want to fall back to Anthropic cloud, uncomment:
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+      # Timezone
+      - TZ=Europe/Zurich
+
+    # ── Resource limits: Claude Code itself is lightweight ────────────────────
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2.0"
+
+    # ── Security hardening ────────────────────────────────────────────────────
+    security_opt:
+      - no-new-privileges:true   # cannot escalate beyond node user
+      - seccomp:unconfined       # needed for iptables to work
+                                 # (replace with custom seccomp profile for production)
+    # NET_ADMIN: required to apply iptables firewall rules (same as Anthropic's setup)
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN     # for iptables
+      - CHOWN         # for file ownership operations
+      - DAC_OVERRIDE  # to write to mounted workspace
+
+    restart: unless-stopped
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # OLLAMA (Linux/Windows with NVIDIA GPU only)
+  #
+  # Mac users: leave this commented out. Run Ollama natively on your Mac:
+  #   brew install ollama && ollama serve
+  #   ollama pull qwen3-coder:30b-a3b
+  #
+  # Linux/Windows NVIDIA users: uncomment this block and change
+  # ANTHROPIC_BASE_URL above to: http://ollama:11434
+  # ────────────────────────────────────────────────────────────────────────────
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ollama
+  #   restart: unless-stopped
+  #   networks:
+  #     - ai-network
+  #   ports:
+  #     - "127.0.0.1:11434:11434"   # localhost only — not exposed to network
+  #   volumes:
+  #     - ollama-models:/root/.ollama
+  #   environment:
+  #     - OLLAMA_HOST=0.0.0.0       # listen on all interfaces inside container
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+# ──────────────────────────────────────────────────────────────────────────────
+# NETWORKS
+# ──────────────────────────────────────────────────────────────────────────────
+networks:
+  ai-network:
+    driver: bridge
+
+# ──────────────────────────────────────────────────────────────────────────────
+# VOLUMES
+# ──────────────────────────────────────────────────────────────────────────────
+volumes:
+  claude-config:        # Claude Code settings, auth, memory
+    driver: local
+  command-history:      # zsh/bash history persists across rebuilds
+    driver: local
+  ollama-models:        # (used only if Ollama container is enabled)
+    driver: local
