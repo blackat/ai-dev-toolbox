@@ -52,15 +52,18 @@ RUN apt-get update && apt-get install -y \
     # ───────────────────────────────────────────────────────────────────────
     && rm -rf /var/lib/apt/lists/*
 
-# ── Step 2: npm global dir — same as Anthropic's setup ─────────────────────
+
+    # ── Step 2: npm global dir — same as Anthropic's setup ─────────────────────
 RUN mkdir -p /usr/local/share/npm-global && \
     chown -R node:node /usr/local/share
 
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
 ENV PATH=$PATH:/usr/local/share/npm-global/bin
 
+
 # ── Step 3: Install Claude Code — same as Anthropic's image ────────────────
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+
 
 # ── Step 4: Firewall script setup — same sudo pattern as Anthropic ──────────
 # Anthropic's approach: node user gets passwordless sudo for firewall script only
@@ -80,9 +83,15 @@ RUN mkdir -p /commandhistory && \
 
 ENV HISTFILE=/commandhistory/.zsh_history
 
+
 # ── Step 6: Copy other files ────────────────────────────────────────────────
+# Claude configuration setup
+RUN mkdir -p /home/node/.claude && chown -R node:node /home/node/.claude
+
 # Copy Claude settings
 COPY claude-settings.json /etc/claude-settings.json
+COPY claude-dot.json /etc/claude-dot.json
+
 # Preferences (persists in claude-config volume) coding style, 
 # workflow rules, personal habits
 COPY claude-memory/global/claude-template.md /etc/claude-template.md
@@ -95,22 +104,23 @@ COPY claude-skills/global/  /etc/claude-skills/global/
 COPY claude-skills/project/ /etc/claude-skills/project/
 
 
-
 # ── Step 7: Workspace setup ─────────────────────────────────────────────────
 RUN mkdir -p /workspace && chown -R node:node /workspace
 WORKDIR /workspace
+
 
 # ── Step 8: Ollama environment — our addition ───────────────────────────────
 # Pre-configure to point at Ollama on Mac host (via host.docker.internal)
 # Override ANTHROPIC_BASE_URL in docker-compose.yml if using Linux container Ollama
 ENV ANTHROPIC_BASE_URL=http://host.docker.internal:11434
-ENV ANTHROPIC_AUTH_TOKEN=ollama
+ENV ANTHROPIC_AUTH_TOKEN=
 ENV ANTHROPIC_API_KEY=
 # Default model — override in docker-compose.yml or at runtime
-ENV OLLAMA_MODEL=qwen3-coder:30b-a3b
+ENV OLLAMA_MODEL=qwen3-coder:30b
 
 # ── Step 9: Drop to non-root node user — same as Anthropic's image ──────────
 USER node
+
 
 # ── Step 10: Entrypoint — apply firewall then open shell ────────────────────
 # Anthropic's devcontainer runs the firewall script via postStartCommand in
