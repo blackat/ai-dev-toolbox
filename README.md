@@ -1,5 +1,38 @@
 # Claude Code + Ollama — Docker Setup
 
+<!-- toc -->
+
+- [File Structure](#file-structure)
+- [Quick Start (Mac)](#quick-start-mac)
+- [What's Different from Anthropic's Official Devcontainer](#whats-different-from-anthropics-official-devcontainer)
+- [Security Measures Applied](#security-measures-applied)
+- [Switching to Anthropic Cloud](#switching-to-anthropic-cloud)
+- [The Cluade → Ollama Flow](#the-cluade-%E2%86%92-ollama-flow)
+- [Claude Code settings.json — Key Reference](#claude-code-settingsjson--key-reference)
+  * [Key Explanations](#key-explanations)
+    + [`permissions.defaultMode: "bypassPermissions"`](#permissionsdefaultmode-bypasspermissions)
+    + [`theme: "dark"`](#theme-dark)
+    + [`skipDangerousModePermissionPrompt: true`](#skipdangerousmodepermissionprompt-true)
+    + [`hasCompletedProjectOnboarding: true`](#hascompletedprojectonboarding-true)
+    + [`hasAcknowledgedCaveats: true`](#hasacknowledgedcaveats-true)
+  * [The Remaining Prompt — Startup Theme](#the-remaining-prompt--startup-theme)
+  * [Two Config Files — Know the Difference](#two-config-files--know-the-difference)
+  * [How to chnage the Claude settings.json](#how-to-chnage-the-claude-settingsjson)
+  * [Summary](#summary)
+- [Claude Memory and Skills](#claude-memory-and-skills)
+  * [Claude Memory: CLAUDE.md](#claude-memory-claudemd)
+    + [Two-file Strategy (recommended)](#two-file-strategy-recommended)
+  * [Claude Skills: SKILL.md](#claude-skills-skillmd)
+    + [What a Skill is](#what-a-skill-is)
+    + [How to use them?](#how-to-use-them)
+    + [Practical example](#practical-example)
+- [Start Claude automatically](#start-claude-automatically)
+- [MacOS Specific](#macos-specific)
+  * [Terminal would like to access data from other apps](#terminal-would-like-to-access-data-from-other-apps)
+    + [What this prompt actually means](#what-this-prompt-actually-means)
+
+<!-- tocstop -->
+
 Extends Anthropic's official devcontainer base with Ollama support for fully local, private AI coding.
 
 ## File Structure
@@ -113,9 +146,9 @@ The shipped file:
 ```
 
 
-## Key Explanations
+### Key Explanations
 
-### `permissions.defaultMode: "bypassPermissions"`
+#### `permissions.defaultMode: "bypassPermissions"`
 Sets Claude Code to never ask for approval before running commands, editing files, or executing anything. The four possible values are:
 
 | Value | Behaviour |
@@ -128,16 +161,16 @@ Sets Claude Code to never ask for approval before running commands, editing file
 Safe inside a container because the blast radius is limited to the mounted workspace.
 
 
-### `theme: "dark"`
+#### `theme: "dark"`
 Sets the color scheme of the Claude Code UI. Goes into `settings.json` but does **not** suppress the startup theme prompt — that is controlled by `~/.claude.json` instead. Partially redundant with what you need to put in `claude.json`.
 
-### `skipDangerousModePermissionPrompt: true`
+#### `skipDangerousModePermissionPrompt: true`
 Suppresses the "you are entering bypass mode, do you accept responsibility" confirmation screen — the one where pressing Enter did nothing. This is what fixed that specific issue.
 
-### `hasCompletedProjectOnboarding: true`
+#### `hasCompletedProjectOnboarding: true`
 Tells Claude Code that the project onboarding flow has already been completed, so it skips the first-run walkthrough that appears when Claude Code detects a new project for the first time.
 
-### `hasAcknowledgedCaveats: true`
+#### `hasAcknowledgedCaveats: true`
 Marks the security caveats screen as already acknowledged — the warning that explains the risks of running in bypass mode. Without this, Claude Code shows that warning on first run even if the permission prompt is already suppressed.
 
 
@@ -301,7 +334,10 @@ ai ./sub-project          # relative: current folder child
 ai ../../somewhere        # relative: multiple levels up
 ```
 
-### MacOS: "Terminal would like to access data from other apps"
+
+## MacOS Specific
+
+### Terminal would like to access data from other apps
 
 This is a macOS privacy prompt, not a Docker or Claude Code issue. It's asking whether Terminal is allowed to access data from other running apps.
 Click `"Don't Allow"` — it's the safer choice and Claude Code will work fine without it.
