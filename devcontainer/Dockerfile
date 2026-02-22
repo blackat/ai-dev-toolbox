@@ -80,11 +80,27 @@ RUN mkdir -p /commandhistory && \
 
 ENV HISTFILE=/commandhistory/.zsh_history
 
-# ── Step 6: Workspace setup ─────────────────────────────────────────────────
+# ── Step 6: Copy other files ────────────────────────────────────────────────
+# Copy Claude settings
+COPY claude-settings.json /etc/claude-settings.json
+# Preferences (persists in claude-config volume) coding style, 
+# workflow rules, personal habits
+COPY claude-memory/global/claude-template.md /etc/claude-template.md
+COPY claude-memory/project/claude-template-default.md /etc/claude-template-default.md
+COPY claude-memory/project/claude-template-node.md /etc/claude-template-node.md
+COPY claude-memory/project/claude-template-python.md /etc/claude-template-python.md
+
+# Copy skill templates
+COPY claude-skills/global/  /etc/claude-skills/global/
+COPY claude-skills/project/ /etc/claude-skills/project/
+
+
+
+# ── Step 7: Workspace setup ─────────────────────────────────────────────────
 RUN mkdir -p /workspace && chown -R node:node /workspace
 WORKDIR /workspace
 
-# ── Step 7: Ollama environment — our addition ───────────────────────────────
+# ── Step 8: Ollama environment — our addition ───────────────────────────────
 # Pre-configure to point at Ollama on Mac host (via host.docker.internal)
 # Override ANTHROPIC_BASE_URL in docker-compose.yml if using Linux container Ollama
 ENV ANTHROPIC_BASE_URL=http://host.docker.internal:11434
@@ -93,10 +109,10 @@ ENV ANTHROPIC_API_KEY=
 # Default model — override in docker-compose.yml or at runtime
 ENV OLLAMA_MODEL=qwen3-coder:30b-a3b
 
-# ── Step 8: Drop to non-root node user — same as Anthropic's image ──────────
+# ── Step 9: Drop to non-root node user — same as Anthropic's image ──────────
 USER node
 
-# ── Step 9: Entrypoint — apply firewall then open shell ─────────────────────
+# ── Step 10: Entrypoint — apply firewall then open shell ────────────────────
 # Anthropic's devcontainer runs the firewall script via postStartCommand in
 # devcontainer.json. For Docker Compose (no devcontainer.json), we do it here.
 COPY --chown=node:node entrypoint.sh /usr/local/bin/entrypoint.sh

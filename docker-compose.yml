@@ -5,8 +5,6 @@
 # Ollama runs natively on your Mac (uses Apple Silicon GPU via Metal).
 # =============================================================================
 
-version: "3.9"
-
 services:
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -46,7 +44,7 @@ services:
 
     volumes:
       # ── Your project code ── mount ONLY the folder you're working on ────────
-      - ./workspace:/workspace:rw
+      - ${MY_WORKSPACE}:/workspace:rw
 
       # ── Persist Claude Code config + auth between container restarts ─────────
       # Same mount path Anthropic's devcontainer.json uses: /home/node/.claude
@@ -61,12 +59,14 @@ services:
 
     environment:
       # Ollama on Mac host — Docker's magic hostname resolves to your Mac's IP
-      - ANTHROPIC_BASE_URL=http://host.docker.internal:11434
-      - ANTHROPIC_AUTH_TOKEN=ollama
-      - ANTHROPIC_API_KEY=         # empty — not needed with local Ollama
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-http://host.docker.internal:11434}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-ollama}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}         # empty — not needed with local Ollama
+      - CLAUDE_CODE_SKIP_CONFIRMATION=${CLAUDE_CODE_SKIP_CONFIRMATION:-true}   # skips the bypass mode confirmation
+      - COLORTERM=truecolor
 
       # Default model (override at runtime: claude --model other-model)
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b-a3b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b}
 
       # If you ever want to fall back to Anthropic cloud, uncomment:
       # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -101,7 +101,7 @@ services:
   #
   # Mac users: leave this commented out. Run Ollama natively on your Mac:
   #   brew install ollama && ollama serve
-  #   ollama pull qwen3-coder:30b-a3b
+  #   ollama pull qwen3-coder:30b
   #
   # Linux/Windows NVIDIA users: uncomment this block and change
   # ANTHROPIC_BASE_URL above to: http://ollama:11434

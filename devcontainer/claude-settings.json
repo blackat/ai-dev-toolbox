@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "theme": "dark",
+  "skipDangerousModePermissionPrompt": true,
+  "hasCompletedProjectOnboarding": true,
+  "hasAcknowledgedCaveats": true
+}
