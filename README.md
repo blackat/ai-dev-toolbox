@@ -6,7 +6,8 @@
 - [Quick Start (Mac)](#quick-start-mac)
 - [What's Different from Anthropic's Official Devcontainer](#whats-different-from-anthropics-official-devcontainer)
 - [Security Measures Applied](#security-measures-applied)
-- [Switching to Anthropic Cloud](#switching-to-anthropic-cloud)
+- [Full Architecture Diagram](#full-architecture-diagram)
+- [Security Checklist](#security-checklist)
 - [The Cluade → Ollama Flow](#the-cluade-%E2%86%92-ollama-flow)
 - [Claude Code settings.json — Key Reference](#claude-code-settingsjson--key-reference)
   * [Key Explanations](#key-explanations)
@@ -30,6 +31,20 @@
 - [MacOS Specific](#macos-specific)
   * [Terminal would like to access data from other apps](#terminal-would-like-to-access-data-from-other-apps)
     + [What this prompt actually means](#what-this-prompt-actually-means)
+  * [Can I Run Ollama from a Container?](#can-i-run-ollama-from-a-container)
+- [Run Everything in Container](#run-everything-in-container)
+  * [Can Claude Code and Ollama Containers Work Together?](#can-claude-code-and-ollama-containers-work-together)
+    + [Architecture A: Ollama on host, Claude Code in container (recommended for Mac)](#architecture-a-ollama-on-host-claude-code-in-container-recommended-for-mac)
+    + [Architecture B: Both in containers (recommended for Linux/Windows with GPU)](#architecture-b-both-in-containers-recommended-for-linuxwindows-with-gpu)
+  * [What Are the Advantages?](#what-are-the-advantages)
+    + [Privacy](#privacy)
+    + [Cost](#cost)
+    + [Safety (container isolation)](#safety-container-isolation)
+    + [Consistency](#consistency)
+    + [Offline capability](#offline-capability)
+  * [How Are the Models Actually Run? Inside a Container or on My Local Env?](#how-are-the-models-actually-run-inside-a-container-or-on-my-local-env)
+    + [If Ollama runs on your Mac (Architecture A):](#if-ollama-runs-on-your-mac-architecture-a)
+    + [If Ollama runs in a container (Architecture B):](#if-ollama-runs-in-a-container-architecture-b)
 
 <!-- tocstop -->
 
@@ -63,6 +78,7 @@ Extends Anthropic's official devcontainer base with Ollama support for fully loc
 └── workspace                                   ← YOUR CODE (only thing Claude can touch)
 ```
 
+
 ## Quick Start (Mac)
 
 ```bash
@@ -88,6 +104,7 @@ docker compose exec -it claude-code bash
 claude --model qwen3-coder:30b --dangerously-skip-permissions
 ```
 
+
 ## What's Different from Anthropic's Official Devcontainer
 
 | Feature | Anthropic's original | This image |
@@ -103,6 +120,7 @@ claude --model qwen3-coder:30b --dangerously-skip-permissions
 | Shell history persistence | ✅ | ✅ Same |
 | Intended workflow | VS Code devcontainer | Docker Compose CLI |
 
+
 ## Security Measures Applied
 
 - Non-root `node` user (same as Anthropic's official image)
@@ -113,6 +131,78 @@ claude --model qwen3-coder:30b --dangerously-skip-permissions
 - Only `./workspace/` mounted — no home dir, no SSH keys, no credentials
 - `~/.gitconfig` mounted read-only (name/email only, not keys)
 - Memory and CPU limits set
+
+
+## Full Architecture Diagram
+
+```
+YOUR MAC
+│
+├── Ollama (native, Apple Silicon GPU via Metal)
+│   ├── Model: qwen3-coder:30b loaded in unified memory
+│   └── API: localhost:11434
+│
+└── Docker Engine
+    │
+    └── Network: ai-network (isolated bridge)
+        │
+        └── claude-code-sandbox container
+            ├── Runs as: non-root user "claude"
+            ├── Filesystem: read-only (except /workspace)
+            ├── Firewall: whitelist-only outbound rules
+            ├── Memory limit: 4GB
+            ├── No privilege escalation
+            │
+            ├── /workspace ◄──── bind mount ────► ./workspace/ on your Mac
+            │   (your code lives here — only thing Claude can touch)
+            │
+            └── Claude Code
+                └── HTTP → host.docker.internal:11434 → Ollama
+                    (all inference happens on your Mac GPU)
+
+WHAT STAYS ON YOUR MAC:
+  ✅ All model weights
+  ✅ All inference (GPU)
+  ✅ Your other projects (not mounted)
+  ✅ SSH keys, .aws, .env files (not mounted)
+  ✅ All other files outside ./workspace/
+
+WHAT HAPPENS IF CLAUDE GOES WRONG:
+  Deletes files  → only affects ./workspace/ (use git to recover)
+  Runs bad cmd   → only inside container (restart to fix)
+  Network attack → firewall blocks it
+  Escapes sandbox → very hard (non-root, dropped caps, read-only FS)
+```
+
+
+## Security Checklist
+
+```
+CONTAINER HARDENING                          STATUS
+─────────────────────────────────────────   ──────
+Non-root user                               ✅
+Read-only root filesystem                   ✅
+No new privileges                           ✅
+All Linux capabilities dropped              ✅
+Only necessary caps added back              ✅
+Memory + CPU limits                         ✅
+Network firewall (whitelist outbound)       ✅
+Only project folder mounted                 ✅
+No home dir, credentials, or keys mounted   ✅
+
+MODEL & DATA PRIVACY                         STATUS
+─────────────────────────────────────────   ──────
+Models run locally (no cloud inference)     ✅
+Code never sent to Anthropic                ✅
+No API key required                         ✅
+Works fully offline                         ✅
+
+SAFETY NET                                   STATUS
+─────────────────────────────────────────   ──────
+Git checkpoints before every session        ✅ (your responsibility)
+Named volumes for model persistence         ✅
+Easy container reset                        ✅
+
 
 ## Switching to Anthropic Cloud
 
@@ -365,3 +455,111 @@ You don't need to grant it. The permission is about reading data from other apps
 If you accidentally clicked `"Allow"` and want to revoke it
 `System Settings → Privacy & Security → Automation`
 Find Terminal in the list and toggle off any apps it's been granted access to.
+
+### Can I Run Ollama from a Container?
+
+**Yes — but with an important caveat for Mac users.**
+
+Ollama has an official Docker image (`ollama/ollama`) that works great on Linux and Windows with NVIDIA/AMD GPUs. However:
+
+> ⚠️ **macOS + Docker Desktop**: Docker Desktop on Mac does **not** support GPU passthrough. If you run Ollama inside a container on a Mac, it runs on CPU only — which is extremely slow for large models.
+
+| Platform | Ollama in container? | GPU support? | Recommendation |
+|---|---|---|---|
+| Linux + NVIDIA GPU | ✅ Yes | ✅ Yes (NVIDIA Container Toolkit) | Run in container |
+| Linux + AMD GPU | ✅ Yes | ✅ Yes (ROCm) | Run in container |
+| Windows + NVIDIA GPU | ✅ Yes | ✅ Yes (Docker Desktop + WSL2) | Run in container |
+| **macOS (Apple Silicon)** | ✅ Technically | ❌ No GPU passthrough | **Run on host instead** |
+
+**For Mac users (the likely majority reading this):** Run Ollama natively on your Mac (where it can use the GPU via Metal/MLX), and have the Claude Code container connect to it.
+
+---
+
+## Run Everything in Container
+
+### Can Claude Code and Ollama Containers Work Together?
+
+**Yes, absolutely.** This is one of the best setups for privacy and safety. There are two architectures:
+
+#### Architecture A: Ollama on host, Claude Code in container (recommended for Mac)
+
+```
+YOUR MAC
+├── Ollama (native, uses Apple Silicon GPU via Metal)
+│   └── listening on localhost:11434
+│
+└── Docker
+    └── Claude Code container
+        └── connects to host Ollama via host.docker.internal:11434
+```
+
+#### Architecture B: Both in containers (recommended for Linux/Windows with GPU)
+
+```
+YOUR MACHINE
+└── Docker network: ai-network
+    ├── ollama container (port 11434, GPU access)
+    │   └── models stored in named volume
+    └── claude-code container
+        └── connects to ollama:11434 (via Docker internal DNS)
+```
+
+In both cases, Claude Code sends requests to Ollama instead of Anthropic's cloud API. The models run locally, the code stays local, nothing leaves your machine.
+
+
+### What Are the Advantages?
+
+#### Privacy
+- Your code **never leaves your machine** — it's not sent to Anthropic or any cloud
+- No API keys exposed in requests
+- Safe to work with proprietary, confidential, or client code
+
+#### Cost
+- Zero API costs — no per-token billing
+- Run as many iterations as you want (Ralph loops, heavy refactoring) without watching your bill
+
+#### Safety (container isolation)
+- Claude Code runs in a sandboxed container: can't touch your other files, credentials, or system
+- Ollama is isolated too: models and data stay in named Docker volumes, separate from your filesystem
+- Each project gets its own container — no cross-contamination
+
+#### Consistency
+- Everyone on your team runs the exact same environment
+- No "works on my machine" issues
+- Easy to reset: delete container, start fresh
+
+#### Offline capability
+- Works without internet after initial model download
+- Great for travel, restricted networks, or air-gapped environments
+
+
+### How Are the Models Actually Run? Inside a Container or on My Local Env?
+
+This is the most important question to understand. **Models run wherever Ollama runs.**
+
+```
+WHAT A "MODEL" IS AT RUNTIME:
+─────────────────────────────
+Model file (.gguf)     → stored on disk (volume or host filesystem)
+Ollama process         → loads model into RAM/VRAM, does inference
+Claude Code            → sends text prompt → receives text response
+                         (Claude Code never "runs" the model itself)
+
+FLOW:
+Claude Code → HTTP request → Ollama → loads model → generates tokens → response
+```
+
+#### If Ollama runs on your Mac (Architecture A):
+- ✅ Model uses Apple Silicon GPU (Metal/MLX) — fast
+- ✅ Model files stored on your Mac's disk
+- ✅ RAM comes from your Mac's unified memory
+- The container only runs Claude Code — lightweight, no GPU needed
+
+#### If Ollama runs in a container (Architecture B):
+- Model is loaded inside the container's memory
+- GPU access requires NVIDIA Container Toolkit (Linux/Windows only)
+- Model files stored in a Docker named volume (persists between restarts)
+- On Mac without GPU passthrough: CPU-only inference — **very slow** for 30B models
+
+**Rule of thumb:** Put Ollama where the GPU is accessible. On Mac, that's the host. On Linux/Windows with NVIDIA, that can be the container.
+
