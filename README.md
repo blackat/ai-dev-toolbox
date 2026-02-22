@@ -38,15 +38,29 @@ Extends Anthropic's official devcontainer base with Ollama support for fully loc
 ## File Structure
 
 ```
-your-project/
-├── docker-compose.yml          ← start here
-├── .env                        ← optional overrides (never commit)
-├── workspace/                  ← YOUR CODE (only thing Claude can touch)
-└── devcontainer/
-    ├── CLAUDE.md               ← global (applies to all projects)
-    ├── Dockerfile              ← extends Anthropic's base + adds Python/vim/Ollama env
-    ├── init-firewall.sh        ← Anthropic's firewall + Ollama port rule
-    └── entrypoint.sh           ← applies firewall, prints startup info, opens shell
+├── README.md                                   ← This file
+├── devcontainer
+│   ├── Dockerfile                              ← extends Anthropic's base + adds Python/vim/Ollama env
+│   ├── claude-memory                           ← Claude memory
+│   │   ├── global                              ← global (applies to all projects)
+│   │   │   └── claude-template.md
+│   │   └── project                             ← project (applies to a specific project language)
+│   │       ├── claude-template-default.md
+│   │       ├── claude-template-node.md
+│   │       └── claude-template-python.md
+│   ├── claude-settings.json                    ← Claude settings.json
+│   ├── claude-skills                           ← Claude skills
+│   │   ├── global
+│   │   │   ├── code-review.md
+│   │   │   ├── git-workflow.md
+│   │   │   └── test-style.md
+│   │   └── project
+│   │       └── component-structure.md
+│   ├── entrypoint.sh                           ← applies firewall, prints startup info, opens shell
+│   └── init-firewall.sh                        ← Anthropic's firewall + Ollama port rule
+├── docker-compose.yml                          ← start here    
+├── .env                                        ← optional overrides (never commit)
+└── workspace                                   ← YOUR CODE (only thing Claude can touch)
 ```
 
 ## Quick Start (Mac)
