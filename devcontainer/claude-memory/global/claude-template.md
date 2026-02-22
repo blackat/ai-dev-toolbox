@@ -20,3 +20,24 @@
 
 ## Known Issues
 <!-- Track known bugs or limitations -->
+
+## Python Projects
+
+Always scaffold Python projects with:
+- uv for package management
+- src layout (src/package_name/)
+- pyproject.toml (not setup.py)
+- ruff for linting and formatting
+- pytest for testing
+- .python-version file
+
+## Git
+- Conventional commits (feat:, fix:, chore:)
+- Always create a feature branch, never commit to main
+- Always ask before force pushing
+
+## General
+- Ask before deleting files
+- Prefer simple solutions over clever ones
+- Add docstrings to all public functions
+- Never hardcode secrets or API keys

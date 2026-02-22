@@ -113,7 +113,8 @@ WORKDIR /workspace
 # Pre-configure to point at Ollama on Mac host (via host.docker.internal)
 # Override ANTHROPIC_BASE_URL in docker-compose.yml if using Linux container Ollama
 ENV ANTHROPIC_BASE_URL=http://host.docker.internal:11434
-ENV ANTHROPIC_AUTH_TOKEN=
+# Set a token (ANTHROPIC_AUTH_TOKEN) or an API key (ANTHROPIC_API_KEY) not both
+# ENV ANTHROPIC_AUTH_TOKEN=
 ENV ANTHROPIC_API_KEY=
 # Default model — override in docker-compose.yml or at runtime
 ENV OLLAMA_MODEL=qwen3-coder:30b

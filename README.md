@@ -337,6 +337,17 @@ The global one travels with you across all projects. The project one gets commit
 /workspace/CLAUDE.md             ← PROJECT knowledge (persists in your repo) architecture, decisions, known issues, conventions
 ```
 
+#### Rule of Thumb
+
+| Preference | Where |
+|---|---|
+| "I always use uv + src layout" | Global — it's about how YOU work |
+| "This project uses FastAPI" | Project — it's about THIS codebase |
+| "I prefer ruff over black" | Global — personal style |
+| "Run `uv run pytest` to test" | Project — project-specific command |
+| "I like dark themes in output" | Global — personal preference |
+| "Database is PostgreSQL 15" | Project — project-specific fact |
+
 ### Claude Skills: SKILL.md
 
 Claude Code's /skills is a plugin system that lets you add reusable instruction sets that Claude loads before tackling certain tasks — think of them as expert playbooks Claude can reference.

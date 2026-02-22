@@ -60,7 +60,8 @@ services:
     environment:
       # Ollama on Mac host — Docker's magic hostname resolves to your Mac's IP
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-http://host.docker.internal:11434}
-      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-ollama}
+      # Set a token (ANTHROPIC_AUTH_TOKEN) or an API key (ANTHROPIC_API_KEY) not both
+      # - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-ollama}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}         # empty — not needed with local Ollama
       - CLAUDE_CODE_SKIP_CONFIRMATION=${CLAUDE_CODE_SKIP_CONFIRMATION:-true}   # skips the bypass mode confirmation
       - COLORTERM=truecolor
