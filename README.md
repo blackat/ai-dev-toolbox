@@ -75,7 +75,8 @@ Extends Anthropic's official devcontainer base with Ollama support for fully loc
 │   │       └── component-structure.md
 │   ├── entrypoint.sh                           ← applies firewall, prints startup info, opens shell
 │   └── init-firewall.sh                        ← Anthropic's firewall + Ollama port rule
-├── docker-compose.yml                          ← start here    
+├── devstral-32k.modelfile                      ← model file, create a new model with larger context
+├── docker-compose.yml                          ← start here
 ├── .env                                        ← optional overrides (never commit)
 └── workspace                                   ← YOUR CODE (only thing Claude can touch)
 ```
