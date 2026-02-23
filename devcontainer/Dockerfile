@@ -47,10 +47,18 @@ RUN apt-get update && apt-get install -y \
     # ── our additions ──────────────────────────────────────────────────────
     python3 \
     python3-pip \
+    python3-venv \
     vim \
     curl \
     # ───────────────────────────────────────────────────────────────────────
     && rm -rf /var/lib/apt/lists/*
+
+
+# Add Python symlink
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
 
 
     # ── Step 2: npm global dir — same as Anthropic's setup ─────────────────────
@@ -117,7 +125,7 @@ ENV ANTHROPIC_BASE_URL=http://host.docker.internal:11434
 # ENV ANTHROPIC_AUTH_TOKEN=
 ENV ANTHROPIC_API_KEY=
 # Default model — override in docker-compose.yml or at runtime
-ENV OLLAMA_MODEL=qwen3-coder:30b
+ENV OLLAMA_MODEL=devstral-small-2-ctx32k
 
 # ── Step 9: Drop to non-root node user — same as Anthropic's image ──────────
 USER node

@@ -4,6 +4,7 @@
 
 - [File Structure](#file-structure)
 - [Quick Start (Mac)](#quick-start-mac)
+- [Why building a new model?](#why-building-a-new-model)
 - [What's Different from Anthropic's Official Devcontainer](#whats-different-from-anthropics-official-devcontainer)
 - [Security Measures Applied](#security-measures-applied)
 - [Full Architecture Diagram](#full-architecture-diagram)
@@ -23,6 +24,7 @@
 - [Claude Memory and Skills](#claude-memory-and-skills)
   * [Claude Memory: CLAUDE.md](#claude-memory-claudemd)
     + [Two-file Strategy (recommended)](#two-file-strategy-recommended)
+    + [Rule of Thumb](#rule-of-thumb)
   * [Claude Skills: SKILL.md](#claude-skills-skillmd)
     + [What a Skill is](#what-a-skill-is)
     + [How to use them?](#how-to-use-them)
@@ -85,7 +87,8 @@ Extends Anthropic's official devcontainer base with Ollama support for fully loc
 # 1. Start Ollama natively on your Mac (uses Apple Silicon GPU)
 brew install ollama
 ollama serve &
-ollama pull qwen3-coder:30b
+ollama pull qwen3-coder:30b   # for code completion
+ollama pull devstral-small-2  # for project scaffolding, default model used later
 
 # 2. Customise your project code location in .env using MY_WORKSPACE environment variable.
 # 2a. By default ./workspace, init your project there
@@ -93,16 +96,46 @@ cd workspace && git init && git add . && git commit -m "pre-claude checkpoint"
 # 2b. Set the folder of your existing project .env
 MY_WORKSPACE=''
 
+# 3. Increase the model context, run from the project folder
+ollama create devstral-small-2-ctx32k -f devstral-32k.modelfile
 
-# 3. Build and start
+# 4. Build and start
 docker compose up --build -d
 
-# 4. Enter the sandbox
+# 5. Enter the sandbox
 docker compose exec -it claude-code bash
 
-# 5. Inside the container — start coding, the model must have been pulled
-claude --model qwen3-coder:30b --dangerously-skip-permissions
+# 6. Inside the container — start coding, the model must have been pulled
+claude --model devstral-small-2-ctx32k --dangerously-skip-permissions
 ```
+
+
+## Why building a new model?
+
+Using the model out of the box will produce this warning in the Ollama console:
+
+```bash
+time=2026-02-23T06:37:20.244+01:00 level=WARN source=runner.go:186 msg="truncating input prompt" limit=4096 prompt=14951 keep=4 new=4096
+```
+
+so context is truncated!
+
+When Claude Code starts a session it loads everything into the context window at once:
+
+```bash
+~/.claude/CLAUDE.md          ← your global preferences
+/workspace/CLAUDE.md         ← project knowledge  
+skills files                 ← your skill templates
+conversation history         ← everything said so far
+system prompt                ← Claude Code's own instructions
+tool outputs                 ← results of bash commands, file reads
+```
+
+All of that combined easily exceeds 4,096 tokens. Your session was showing `prompt=14,951` tokens, so Ollama was silently cutting it down to `4,096` and throwing away the other `~11,000` tokens.
+The model was then working with an incomplete and truncated view, missing parts of your `CLAUDE.md`, missing conversation history, missing tool results. 
+
+That's why it was behaving erratically, forgetting instructions, and looping.
+Finally `32,768` gives enough headroom for a real working session. The model itself supports up to `384K`, so `32K` is a conservative safe middle ground that fits comfortably in RAM.
 
 
 ## What's Different from Anthropic's Official Devcontainer
@@ -417,9 +450,6 @@ function ai {
   local dir
   dir=$(cd "$1" 2>/dev/null && pwd)
 
-  echo "DEBUG resolved dir: '$dir'"
-  echo "DEBUG file exists: $(test -f "$dir/docker-compose.yml" && echo YES || echo NO)"
-
   if [[ -z "$dir" ]]; then
     echo "❌ Path does not exist: $1"
     return 1
@@ -432,9 +462,8 @@ function ai {
   fi
 
   docker compose --project-directory "$dir" up -d
-  docker compose --project-directory "$dir" exec claude-code claude --model qwen3-coder:30b
+  docker compose --project-directory "$dir" exec claude-code claude --model devstral-small-2-ctx32k
 }
-
 ```
 
 and these are possible usages:

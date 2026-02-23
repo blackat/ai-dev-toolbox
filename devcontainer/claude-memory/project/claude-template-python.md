@@ -3,7 +3,6 @@
 ## Stack
 - Python 3.12, FastAPI, PostgreSQL 15
 - uv for package management
-- Deployed on Railway
 
 ## Commands
 - `uv run pytest` — run tests
